@@ -1864,7 +1864,7 @@ async function loadRates(){
       try{
         const controller=new AbortController();
         const timeout=setTimeout(()=>controller.abort(),8000);
-        const r=await fetch('/api/proxy?url='+encodeURIComponent(url),{signal:controller.signal});
+        const r=await fetch(url,{signal:controller.signal});
         clearTimeout(timeout);
         const d=await r.json();
         const fx=d.rates||d.conversion_rates;
@@ -2122,7 +2122,7 @@ async function fetchWithFallback(url){
   try{
     const ctrl=new AbortController();
     setTimeout(()=>ctrl.abort(),7000);
-    const r=await fetch('/api/proxy?url='+encodeURIComponent(url),{signal:ctrl.signal});
+    const r=await fetch(url,{signal:ctrl.signal});
     const d=await r.json();
     if(d && (d.current||d.rates||d.result)) return d;
   }catch(e){}
@@ -2547,7 +2547,7 @@ async function loadLeague(leagueCode, leagueName){
   try{
     // Always fetch finished matches for form data
     const finishedUrl='https://api.football-data.org/v4/competitions/'+leagueCode+'/matches?status=FINISHED';
-    const fr=await fetch('/api/proxy?url='+encodeURIComponent(finishedUrl));
+    const fr=await fetch(finishedUrl);
     const fd=await fr.json();
     allLeagueMatches=fd.matches||[];
 
@@ -2556,7 +2556,7 @@ async function loadLeague(leagueCode, leagueName){
       displayMatches=allLeagueMatches.slice(-10).reverse();
     } else {
       const schedUrl='https://api.football-data.org/v4/competitions/'+leagueCode+'/matches?status=SCHEDULED';
-      const sr=await fetch('/api/proxy?url='+encodeURIComponent(schedUrl));
+      const sr=await fetch(schedUrl);
       const sd=await sr.json();
       displayMatches=(sd.matches||[]).slice(0,10);
     }
@@ -2711,7 +2711,7 @@ async function loadJobs(){
   const allParsed=[];
   try{
     const pages=await Promise.all([0,20,40,60].map(offset=>
-      fetch('/api/proxy?url='+encodeURIComponent('https://himalayas.app/jobs/api?limit=20&offset='+offset))
+      fetch('https://himalayas.app/jobs/api?limit=20&offset='+offset)
         .then(r=>r.ok?r.json():null)
         .catch(()=>null)
     ));
@@ -2768,7 +2768,7 @@ async function loadJobs(){
       {slug:'finance-legal',cat:'finance'},
     ];
     await Promise.all(cats.map(({slug,cat})=>
-      fetch('/api/proxy?url='+encodeURIComponent('https://remotive.com/api/remote-jobs?category='+slug+'&limit=8'))
+      fetch('https://remotive.com/api/remote-jobs?category='+slug+'&limit=8')
         .then(r=>r.ok?r.json():null)
         .then(data=>{
           if(!data||!data.jobs) return;
@@ -3007,7 +3007,7 @@ async function searchHospitals(){
   try{
     // Geocode the city name using Nominatim
     const geoUrl=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+', Ghana')}&format=json&limit=1`;
-    const gr=await fetch('/api/proxy?url='+encodeURIComponent(geoUrl));
+    const gr=await fetch(geoUrl);
     const gd=await gr.json();
     if(!gd.length){
       document.getElementById('hosp-loading').style.display='none';
@@ -3033,7 +3033,7 @@ async function fetchHospitalsNear(lat, lon, label){
 out center 30;`;
 
     const overpassUrl=`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-    const r=await fetch('/api/proxy?url='+encodeURIComponent(overpassUrl));
+    const r=await fetch(overpassUrl);
     const d=await r.json();
 
     document.getElementById('hosp-loading').style.display='none';
@@ -3524,7 +3524,7 @@ async function searchNearby(type, resultsId, loadingId, cityQuery){
   document.getElementById(resultsId).innerHTML='';
   try{
     const geoUrl=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityQuery+', Ghana')}&format=json&limit=1`;
-    const gr=await fetch('/api/proxy?url='+encodeURIComponent(geoUrl));
+    const gr=await fetch(geoUrl);
     const gd=await gr.json();
     if(!gd.length){
       document.getElementById(loadingId).style.display='none';
@@ -3555,7 +3555,7 @@ async function fetchNearbyPlaces(type, lat, lon, resultsId, loadingId){
   };
   const query=`[out:json][timeout:25];(node[${type==='restaurant'||type==='school'?amenityMap[type]:`"amenity"="${amenityMap[type]}"`}](around:5000,${lat},${lon});way[${type==='restaurant'||type==='school'?amenityMap[type]:`"amenity"="${amenityMap[type]}"`}](around:5000,${lat},${lon}););out center 25;`;
   try{
-    const r=await fetch('/api/proxy?url='+encodeURIComponent('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query)));
+    const r=await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query));
     const d=await r.json();
     document.getElementById(loadingId).style.display='none';
     nearbyResults[type]=(d.elements||[]).filter(el=>el.tags?.name).map(el=>({
@@ -4807,28 +4807,11 @@ function filterNewsByState(articles, state) {
   return articles; // fallback to all national
 }
 
-// Override renderNews to apply state/diaspora filter
+// Override renderNews to apply state filter only
 const _origRenderNews2 = renderNews;
 renderNews = function(articles) {
   const prefs = loadPrefs();
-  const isDiaspora = prefs.country && prefs.country !== 'nigeria';
-
-  if(isDiaspora) {
-    // Option 2: Filter news for diaspora users — show nationally relevant stories
-    // plus tag any diaspora-specific ones
-    const newsSub = document.querySelector('#panel-news .card-sub');
-    const countryNames = {
-      uk:'United Kingdom 🇬🇧', usa:'United States 🇺🇸', canada:'Canada 🇨🇦',
-      uae:'UAE 🇦🇪', ireland:'Ireland 🇮🇪', germany:'Germany 🇩🇪',
-      australia:'Australia 🇦🇺', italy:'Italy 🇮🇹', southafrica:'South Africa 🇿🇦',
-      ghana:'Ghana 🇬🇭', kenya:'Kenya 🇰🇪', other:'Abroad 🌐'
-    };
-    if(newsSub) newsSub.innerHTML = `🌍 Ghanan news for Ghanans in <strong>${countryNames[prefs.country]||'Abroad'}</strong> · Click to read`;
-    _origRenderNews2(articles);
-    // Option 3: Append diaspora section below main news
-    renderDiasporaSection(articles);
-  } else if(prefs.state) {
-    // Ghana user with state preference
+  if(prefs.state) {
     const filtered = filterNewsByState(articles, prefs.state);
     const stateName = document.getElementById('pref-state')?.selectedOptions?.[0]?.text || prefs.state;
     const newsSub = document.querySelector('#panel-news .card-sub');
@@ -4839,87 +4822,6 @@ renderNews = function(articles) {
   }
 };
 
-async function renderDiasporaSection(mainArticles) {
-  // Option 3: "For Ghanans Abroad" section — 3 diaspora headlines
-  const existingSection = document.getElementById('diaspora-news-section');
-  if(existingSection) existingSection.remove();
-
-  // Try to find diaspora stories from already loaded articles first
-  let diasporaArticles = filterDiasporaNews(mainArticles);
-
-  // If fewer than 2 found, fetch diaspora feed
-  if(diasporaArticles.length < 2) {
-    try {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), 6000);
-      const r = await fetch('/api/proxy?url=' + encodeURIComponent('https://feeds.bbci.co.uk/news/world/africa/rss.xml'), {signal:ctrl.signal});
-      const text = await r.text();
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(text, 'text/xml');
-      const items = [...xml.querySelectorAll('item')].slice(0, 10);
-      const extraArticles = items.map(item => ({
-        title: item.querySelector('title')?.textContent?.trim() || '',
-        description: (item.querySelector('description')?.textContent||'').replace(/<[^>]*>/g,'').slice(0,160),
-        link: item.querySelector('link')?.textContent?.trim() || '',
-        source: 'BBC Africa',
-        pubDate: item.querySelector('pubDate')?.textContent || '',
-      }));
-      diasporaArticles = [...filterDiasporaNews(mainArticles), ...filterDiasporaNews(extraArticles)];
-    } catch(e) {}
-  }
-
-  if(!diasporaArticles.length) return;
-
-  // Deduplicate
-  const seen = new Set();
-  diasporaArticles = diasporaArticles.filter(a => {
-    const key = a.title.slice(0,40).toLowerCase();
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  const prefs = loadPrefs();
-  const countryNames = {
-    uk:'United Kingdom', usa:'United States', canada:'Canada',
-    uae:'UAE', ireland:'Ireland', germany:'Germany',
-    australia:'Australia', italy:'Italy', southafrica:'South Africa',
-    ghana:'Ghana', kenya:'Kenya', other:'Abroad'
-  };
-
-  const section = document.createElement('div');
-  section.id = 'diaspora-news-section';
-  section.style.cssText = 'margin-top:20px;padding-top:16px;border-top:2px solid var(--border);';
-  section.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <div style="font-size:18px;">🌍</div>
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--charcoal);">For Ghanans in ${countryNames[prefs.country]||'Abroad'}</div>
-        <div style="font-size:11px;color:var(--mid);">Stories relevant to Ghanans abroad</div>
-      </div>
-    </div>
-    ${diasporaArticles.slice(0,3).map((item, i) => `
-    <div class="news-item" style="cursor:pointer;" onclick="window.open('${item.link}','_blank')">
-      <div class="news-num">${String(i+1).padStart(2,'0')}</div>
-      <div class="news-content">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <div class="news-tag" style="background:rgba(206,17,38,.1);color:var(--green);border:1px solid rgba(206,17,38,.18);">🌍 Diaspora</div>
-          ${item.pubDate ? `<div style="font-size:10px;color:var(--mid);">🕐 ${getTimeAgo(new Date(item.pubDate))}</div>` : ''}
-        </div>
-        <h4>${item.title}</h4>
-        <p>${(item.description||'').slice(0,150)}</p>
-        ${item.source ? `<div style="font-size:10px;color:var(--mid);margin-top:4px;">📰 ${item.source} <a href="${item.link}" target="_blank" rel="noopener noreferrer" style="color:var(--green);text-decoration:none;">Read full story →</a></div>` : ''}
-      </div>
-    </div>`).join('')}
-    <div style="margin-top:12px;background:rgba(206,17,38,.04);border:1px solid rgba(206,17,38,.12);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--mid);">
-      💡 Showing diaspora-relevant stories based on your location preference. 
-      <span style="color:var(--green);cursor:pointer;font-weight:600;" onclick="openPrefs()">Change location →</span>
-    </div>
-  `;
-
-  const newsList = document.getElementById('news-list');
-  if(newsList) newsList.appendChild(section);
-}
 
 
 function openPrefs() {
