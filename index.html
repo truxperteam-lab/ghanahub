@@ -635,7 +635,7 @@ footer strong{color:var(--green);}
 <header>
   <div class="logo">
     <div class="logo-flag"><div class="fl"></div><div class="fm" style="display:flex;align-items:center;justify-content:center;font-size:14px;color:#000;">★</div><div class="fr"></div></div>
-    <div class="logo-text">Naija<span>Hub</span></div>
+    <div class="logo-text">Ghana<span>Hub</span></div>
   </div>
   <div class="header-right">
     <div class="date-badge" id="today-date"></div>
@@ -988,25 +988,25 @@ footer strong{color:var(--green);}
 
     <div class="law-card">
       <div class="law-tag">Data Privacy</div>
-      <h3>🔒 Ghana Data Protection Act 2023 (NDPA)</h3>
+      <h3>🔒 Ghana Data Protection Act 2012 (Act 843)</h3>
       <ul>
-        <li><b>Who it applies to:</b> Any person/business processing personal data of Ghanans</li>
-        <li><b>User rights:</b> Access, correction, deletion, portability, withdraw consent</li>
-        <li><b>Website duties:</b> Must have Privacy Policy, get consent before data collection, report breaches within 72hrs</li>
-        <li><b>Regulator:</b> NDPC — ndpc.gov.ng</li>
-        <li><b>Penalty:</b> Up to ₵10M or 2% of annual gross revenue</li>
+        <li><b>Who it applies to:</b> Any person/business processing personal data of Ghanaians</li>
+        <li><b>User rights:</b> Access, correction, deletion, objection to processing</li>
+        <li><b>Website duties:</b> Must register with DPC, have Privacy Policy, get consent before data collection, report breaches promptly</li>
+        <li><b>Regulator:</b> Data Protection Commission (DPC) — dataprotection.gov.gh</li>
+        <li><b>Penalty:</b> Up to GH₵60,000 or 2 years imprisonment for individuals</li>
       </ul>
     </div>
 
     <div class="law-card">
       <div class="law-tag">Cybercrime</div>
-      <h3>🌐 Cybercrimes Act 2015 (Amended 2024)</h3>
+      <h3>🌐 Electronic Transactions Act 2008 & Cybersecurity Act 2020</h3>
       <ul>
         <li>Hosting false/misleading information online is an offence</li>
-        <li>Identity theft: up to 7 years imprisonment</li>
-        <li>Hacking: up to 3 years imprisonment</li>
+        <li>Identity theft and impersonation: criminal offence under Act 812</li>
+        <li>Unauthorised access to computer systems: up to 10 years imprisonment</li>
         <li>Cyberstalking and online harassment are criminal offences</li>
-        <li><b>Regulator:</b> Ghana Police Cybercrime Unit, EFCC</li>
+        <li><b>Regulator:</b> Cyber Security Authority (CSA) — cybersecurity.gov.gh</li>
       </ul>
     </div>
 
@@ -1750,7 +1750,7 @@ footer strong{color:var(--green);}
       <div class="curr-chip" data-type="adventure" onclick="filterTourism('adventure','type')">🧗 Adventure</div>
     </div>
     <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--mid);margin-bottom:14px;">
-      ⚠️ <strong>Disclaimer:</strong> Entry prices, transport costs and operating hours change frequently. Always verify current prices directly with the attraction or via the <a href="https://www.nigeriatourism.net" target="_blank" rel="noopener noreferrer" style="color:var(--green);">Ghana Tourism Development Corporation</a> before visiting. GhanaHub is not liable for any inaccuracies.
+      ⚠️ <strong>Disclaimer:</strong> Entry prices, transport costs and operating hours change frequently. Always verify current prices directly with the attraction or via the <a href="https://www.ghanatourism.gov.gh" target="_blank" rel="noopener noreferrer" style="color:var(--green);">Ghana Tourism Development Corporation</a> before visiting. GhanaHub is not liable for any inaccuracies.
     </div>
     <div id="tourism-list"></div>
   </div>
@@ -1758,7 +1758,7 @@ footer strong{color:var(--green);}
     <div class="card-title">🛡️ State Safety Ratings</div>
     <div class="card-sub">General travel safety guide — always verify current conditions before travelling</div>
     <div style="background:rgba(214,63,49,.06);border:1px solid rgba(214,63,49,.2);border-radius:10px;padding:12px;font-size:12px;color:var(--mid);margin-bottom:14px;">
-      ⚠️ Safety ratings are general guides only. Always check current advisories from the <a href="https://www.nigeriatourism.net" target="_blank" rel="noopener noreferrer" style="color:var(--green);">Ghana Tourism Development Corporation</a> before travelling.
+      ⚠️ Safety ratings are general guides only. Always check current advisories from the <a href="https://www.ghanatourism.gov.gh" target="_blank" rel="noopener noreferrer" style="color:var(--green);">Ghana Tourism Development Corporation</a> before travelling.
     </div>
     <div id="safety-ratings-list"></div>
   </div>
@@ -1985,115 +1985,33 @@ async function loadNews(cat='general'){
   document.getElementById('news-loading').style.display='flex';
   document.getElementById('news-list').innerHTML='';
 
-  const nigeriaKeywords=/nigeria|nigerian|lagos|abuja|kano|ibadan|enugu|port harcourt|tinubu|senate|cbn|nnpc|naira|efcc|inec|aso rock|dangote|gtbank|zenith|access bank|first bank|jamb|waec|asuu|yoruba|igbo|hausa|delta|rivers|ogun|oyo|benue|kaduna|anambra|imo|akwa ibom|edo|punch|vanguard|channels|guardian nigeria|nass|buhari|peter obi|atiku|firs|nafdac|fmf/i;
+  const catLabel = {general:'general Ghana', business:'Ghana business & economy', technology:'Ghana tech', sports:'Ghana sports & football'}[cat]||'Ghana';
+  const prompt = `Search the web for the 6 most recent ${catLabel} news headlines from the past 48 hours. For each story return: source name, headline, 1-sentence summary, and time. Return ONLY a JSON array, no markdown: [{"title":"...","description":"...","source":"...","pubDate":"...","link":"..."}]`;
 
-  const feedMap={
-    general:[
-      {url:'https://www.graphic.com.gh/feed',name:'Graphic Online',cat:null},
-      {url:'https://www.myjoyonline.com/feed/',name:'Joy Online',cat:null},
-      {url:'https://citinewsroom.com/feed/',name:'Citi Newsroom',cat:null},
-      {url:'https://pulse.com.gh/feed',name:'Pulse Ghana',cat:null},
-      {url:'https://feeds.bbci.co.uk/news/world/africa/rss.xml',name:'BBC Africa',cat:null},
-      {url:'https://thebftonline.com/feed/',name:'Business & Financial Times',cat:null},
-    ],
-    diaspora:[
-      {url:'https://feeds.bbci.co.uk/news/world/africa/rss.xml',name:'BBC Africa',cat:null},
-      {url:'https://guardian.ng/feed/',name:'Guardian Ghana',cat:null},
-      {url:'https://punchng.com/feed/',name:'Punch',cat:null},
-      {url:'https://www.premiumtimesng.com/feed',name:'Premium Times',cat:null},
-      {url:'https://www.vanguardngr.com/feed/',name:'Vanguard',cat:null},
-    ],
-    business:[
-      {url:'https://thebftonline.com/feed/',name:'Business & Financial Times',cat:'Business'},
-      {url:'https://citinewsroom.com/category/business/feed/',name:'Citi Business',cat:'Business'},
-      {url:'https://www.myjoyonline.com/business/feed/',name:'Joy Business',cat:'Business'},
-      {url:'https://pulse.com.gh/business/feed',name:'Pulse Business GH',cat:'Business'},
-    ],
-    technology:[
-      {url:'https://techcabal.com/feed/',name:'TechCabal',cat:'Tech'},
-      {url:'https://techpoint.africa/feed/',name:'Techpoint Africa',cat:'Tech'},
-      {url:'https://citinewsroom.com/category/technology/feed/',name:'Citi Tech',cat:'Tech'},
-    ],
-    sports:[
-      {url:'https://footballghana.com/feed/',name:'Football Ghana',cat:'Sports'},
-      {url:'https://pulse.com.gh/sports/feed',name:'Pulse Sports GH',cat:'Sports'},
-      {url:'https://citinewsroom.com/category/sports/feed/',name:'Citi Sports',cat:'Sports'},
-      {url:'https://www.ghanasoccernet.com/feed',name:'Ghana Soccer Net',cat:'Sports'},
-    ]
-  };
-
-  const feeds=feedMap[cat]||feedMap.general;
-
-  // Fetch ALL feeds in parallel and merge, then filter for Ghana
-  const allArticles=[];
-  await Promise.all(feeds.map(async feed=>{
-    try{
-      const ctrl=new AbortController();
-      setTimeout(()=>ctrl.abort(),7000);
-      const r=await fetch('/api/proxy?url='+encodeURIComponent(feed.url),{signal:ctrl.signal});
-      const text=await r.text();
-      const parser=new DOMParser();
-      const xml=parser.parseFromString(text,'text/xml');
-      const items=[...xml.querySelectorAll('item')].slice(0,8);
-      items.forEach(item=>{
-        const title=item.querySelector('title')?.textContent?.trim()||'';
-        // Get the cleanest description available — strip CDATA, HTML tags and decode entities
-        const rawDesc=(
-          item.querySelector('encoded')?.textContent ||
-          item.querySelector('description')?.textContent ||
-          ''
-        );
-        const desc=rawDesc
-          .replace(/<!\[CDATA\[|\]\]>/g,'')
-          .replace(/<[^>]*>/g,' ')
-          .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<')
-          .replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#\d+;/g,'')
-          .replace(/\s+/g,' ').trim().slice(0,160);
-        // <link> in XML RSS is a text node after the element, not an attribute
-        const linkEl=item.querySelector('link');
-        const link=(linkEl?.textContent?.trim()||linkEl?.nextSibling?.textContent?.trim()||'');
-        const pubDate=item.querySelector('pubDate')?.textContent||'';
-        if(title) allArticles.push({title,description:desc,link,source:feed.name,pubDate,sourceCategory:feed.cat||null});
-      });
-    }catch(e){}
-  }));
-
-  if(!allArticles.length){
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        tools: [{type: 'web_search_20250305', name: 'web_search'}],
+        system: 'You are a Ghana news aggregator. Search for real current news. Return ONLY a raw JSON array with no markdown, no backticks, no preamble.',
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const clean = text.replace(/```json|```/g,'').trim();
+    const articles = JSON.parse(clean);
+    if (!articles.length) throw new Error('No articles returned');
     document.getElementById('news-loading').style.display='none';
-    document.getElementById('news-list').innerHTML='<p style="padding:12px;color:var(--mid)">Could not load Ghanan news. Check back shortly.</p>';
-    return;
+    renderNews(articles.slice(0,6));
+  } catch(e) {
+    document.getElementById('news-loading').style.display='none';
+    document.getElementById('news-list').innerHTML='<p style="padding:12px;color:var(--mid)">Could not load Ghana news. Check back shortly.</p>';
   }
-
-  // Sort by date (newest first)
-  allArticles.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-
-  // Category-specific keyword filters
-  const catKeywords={
-    business:/business|economy|market|stock|ngx|naira|cbn|invest|revenue|profit|company|trade|gdp|inflation|banking|finance|budget|tax|import|export|entrepreneur/i,
-    technology:/tech|startup|software|app|ai|artificial intelligence|crypto|bitcoin|blockchain|fintech|digital|internet|mobile|gadget|innovation|cybersecurity|data/i,
-    sports:/football|soccer|basketball|tennis|athletics|super eagles|afcon|premier league|naija|transfer|goal|match|stadium|fifa|nfl|nba|cricket|rugby|champion/i,
-  };
-
-  // Filter for Ghana keywords
-  let filtered=allArticles.filter(a=>nigeriaKeywords.test(a.title+' '+a.description));
-  // Further filter by category keywords for non-general tabs
-  if(cat!=='general' && catKeywords[cat]){
-    const catFiltered=filtered.filter(a=>catKeywords[cat].test(a.title+' '+a.description));
-    if(catFiltered.length>=2) filtered=catFiltered;
-  }
-
-  // Deduplicate by similar titles
-  const seen=new Set();
-  filtered=filtered.filter(a=>{
-    const key=a.title.slice(0,40).toLowerCase();
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  // Fall back to all articles if not enough Ghanan stories
-  const final=filtered.length>=3?filtered:allArticles;
-  renderNews(final.slice(0,6));
 }
 
 function detectNewsTag(title, desc){
@@ -2102,9 +2020,9 @@ function detectNewsTag(title, desc){
   // Digest/recap → always Ghana
   if(/morning recap|daily recap|evening recap|top stories|news digest|weekly digest/.test(titleOnly)) return {tag:'Ghana',color:'#006B3F'};
   // Sports — title only to avoid false matches
-  if(/\bfootball\b|premier league|champions league|super eagles|afcon|bundesliga|la liga|serie a|\bsports\b|\bgoal\b|scored|\bfifa\b|\bnfl\b|\bnba\b|cricket|\btennis\b|world cup/.test(titleOnly)) return {tag:'Sports',color:'#006B3F'};
+  if(/\bfootball\b|premier league|champions league|black stars|afcon|bundesliga|la liga|serie a|\bsports\b|\bgoal\b|scored|\bfifa\b|\bnfl\b|\bnba\b|cricket|\btennis\b|world cup/.test(titleOnly)) return {tag:'Sports',color:'#006B3F'};
   // Politics — political figures/institutions as subject, checked before Security
-  if(/\bpolitic\b|presidential|aso rock|tinubu|legislature|\belection\b|\bsenate\b|house of rep|anti-graft|anti.corruption|probe.*project|political appoint/.test(titleOnly)) return {tag:'Politics',color:'#6c5ce7'};
+  if(/\bpolitic\b|presidential|jubilee house|mahama|legislature|\belection\b|\bsenate\b|house of rep|anti-graft|anti.corruption|probe.*project|political appoint/.test(titleOnly)) return {tag:'Politics',color:'#6c5ce7'};
   if(/(?:^|\s)(?:president|minister|governor|senator)\s/.test(titleOnly)) return {tag:'Politics',color:'#6c5ce7'};
   if(/\bgovernor\b|\bpresident\b|\bminister\b/.test(text) && /order|direct|call|urge|appeal|preach|declar|announc|commend|laud|invite|ask|warn|say |state|pledge/.test(text)) return {tag:'Politics',color:'#6c5ce7'};
   // Security — clear crime, violence, law enforcement action
@@ -2453,7 +2371,7 @@ const emergencyGovt=[
   {icon:'💊',name:'NAFDAC',num:'0800-NAFDAC-1',desc:'Fake drugs & food safety',color:'rgba(0,135,81,.08)',border:'rgba(206,17,38,.18)'},
   {icon:'⚡',name:'NERC Hotline',num:'0800-NERC-001',desc:'Electricity complaints',color:'rgba(245,166,35,.08)',border:'rgba(245,166,35,.2)'},
   {icon:'🏦',name:'CBN Consumer',num:'07002255226',desc:'Bank complaints & fraud',color:'rgba(0,135,81,.08)',border:'rgba(206,17,38,.18)'},
-  {icon:'📞',name:'EFCC Hotline',num:'08093322644',desc:'Financial crimes & fraud',color:'rgba(108,92,231,.08)',border:'rgba(108,92,231,.2)'},
+  {icon:'📞',name:'EOCO Hotline',num:'0302-933-228',desc:'Economic & financial crimes',color:'rgba(108,92,231,.08)',border:'rgba(108,92,231,.2)'},
 ];
 
 function renderEmergency(arr, elId){
@@ -3875,7 +3793,7 @@ function renderTourism(){
             </div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <a href="https://www.nigeriatourism.net" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--green);text-decoration:none;background:rgba(0,135,81,.08);padding:4px 10px;border-radius:100px;font-weight:600;">🌐 Ghana Tourism Board →</a>
+            <a href="https://www.ghanatourism.gov.gh" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--green);text-decoration:none;background:rgba(0,135,81,.08);padding:4px 10px;border-radius:100px;font-weight:600;">🌐 Ghana Tourism Board →</a>
             <a href="https://www.google.com/maps/search/${encodeURIComponent(d.name+' '+d.state+' Ghana')}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--blue);text-decoration:none;background:rgba(9,132,227,.08);padding:4px 10px;border-radius:100px;font-weight:600;">📍 View on Maps →</a>
           </div>
         </div>
@@ -3919,7 +3837,7 @@ function initTourismTab(){
 (function checkSecurityAlerts(){
   const activeAlerts = [
     {title:'CBN warns of fake banking apps — verify before downloading', severity:'high'},
-    {title:'EFCC: Fake investment platforms targeting Ghanans', severity:'high'},
+    {title:'BOG: Fake investment platforms targeting Ghanaians', severity:'high'},
     {title:'NCC Alert: SIM swap fraud on the rise', severity:'medium'},
   ];
   const high = activeAlerts.find(a=>a.severity==='high');
@@ -5447,7 +5365,7 @@ initHolidays();
         <div class="prefs-toggle-row">
           <div>
             <div class="prefs-toggle-label">🛡️ Security alerts <span style="font-size:10px;background:rgba(245,166,35,.15);color:var(--gold);padding:1px 6px;border-radius:100px;">Coming soon</span></div>
-            <div class="prefs-toggle-sub">Notify when new EFCC/CBN warnings are issued</div>
+            <div class="prefs-toggle-sub">Notify when new BOG/SEC Ghana warnings are issued</div>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="pref-notif-security" checked>
