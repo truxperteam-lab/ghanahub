@@ -1985,8 +1985,8 @@ async function loadNews(cat='general'){
   document.getElementById('news-loading').style.display='flex';
   document.getElementById('news-list').innerHTML='';
 
-  const catLabel = {general:'general Ghana', business:'Ghana business & economy', technology:'Ghana tech', sports:'Ghana sports & football'}[cat]||'Ghana';
-  const prompt = `Search the web for the 6 most recent ${catLabel} news headlines from the past 48 hours. For each story return: source name, headline, 1-sentence summary, and time. Return ONLY a JSON array, no markdown: [{"title":"...","description":"...","source":"...","pubDate":"...","link":"..."}]`;
+  const catLabel = {general:'general Ghana', business:'Ghana business & economy', technology:'Ghana technology & startups', sports:'Ghana sports & Black Stars football'}[cat]||'Ghana';
+  const prompt = `Search the web for the 6 most recent ${catLabel} news headlines from the past 48 hours. Return ONLY a valid JSON array, no markdown, no backticks, no explanation before or after. Format: [{"title":"headline here","description":"one sentence summary","source":"Source Name","pubDate":"2026-03-13","link":"https://..."}]`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1994,23 +1994,45 @@ async function loadNews(cat='general'){
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
+        max_tokens: 1500,
         tools: [{type: 'web_search_20250305', name: 'web_search'}],
-        system: 'You are a Ghana news aggregator. Search for real current news. Return ONLY a raw JSON array with no markdown, no backticks, no preamble.',
+        system: 'You are a Ghana news aggregator. Search the web for real, current news stories. Respond with ONLY a raw JSON array — no markdown fences, no text before or after, just the JSON array starting with [ and ending with ].',
         messages: [{role: 'user', content: prompt}]
       })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
+
+    // Extract all text blocks and join
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-    const clean = text.replace(/```json|```/g,'').trim();
-    const articles = JSON.parse(clean);
-    if (!articles.length) throw new Error('No articles returned');
+
+    // Strip any accidental markdown fences
+    const clean = text.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+
+    // Find the JSON array within the response (even if there's surrounding text)
+    const arrayStart = clean.indexOf('[');
+    const arrayEnd = clean.lastIndexOf(']');
+    if(arrayStart === -1 || arrayEnd === -1) throw new Error('No JSON array found in response');
+    const jsonStr = clean.slice(arrayStart, arrayEnd + 1);
+
+    const articles = JSON.parse(jsonStr);
+    if (!Array.isArray(articles) || !articles.length) throw new Error('Empty articles array');
+
+    // Normalise each article — ensure sourceCategory is set for renderNews
+    const normalised = articles.map(a => ({
+      title: a.title || '',
+      description: a.description || a.summary || '',
+      source: a.source || 'Ghana News',
+      pubDate: a.pubDate || a.date || '',
+      link: a.link || a.url || '',
+      sourceCategory: null  // let detectNewsTag handle it
+    })).filter(a => a.title);
+
     document.getElementById('news-loading').style.display='none';
-    renderNews(articles.slice(0,6));
+    renderNews(normalised.slice(0,6));
   } catch(e) {
     document.getElementById('news-loading').style.display='none';
-    document.getElementById('news-list').innerHTML='<p style="padding:12px;color:var(--mid)">Could not load Ghana news. Check back shortly.</p>';
+    document.getElementById('news-list').innerHTML='<p style="padding:12px;color:var(--mid)">Could not load Ghana news. <button onclick="loadNews(\''+cat+'\')" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">Try again</button></p>';
   }
 }
 
@@ -2037,8 +2059,8 @@ function detectNewsTag(title, desc){
   if(/\beducation\b|\bschool\b|university|\bstudent\b|\basuu\b|\bexam\b|\bjamb\b|\bwaec\b/.test(text)) return {tag:'Education',color:'#fdcb6e'};
   // Tech
   if(/\btech\b|startup|\bsoftware\b|\bai\b|artificial intelligence|crypto|bitcoin|blockchain|fintech|gadget|innovation|smartphone|cybersecurity|\bfacebook\b|\btwitter\b|\bmeta\b|\bgoogle\b|\btelegram\b/.test(text)) return {tag:'Tech',color:'#0984e3'};
-  // Business — broader now that Politics/Security are more precise
-  if(/\bbusiness\b|\bmarket\b|\bstock\b|\btrade\b|\beconomy\b|\bgdp\b|inflation|\bnaira\b|\bngx\b|investment|revenue|profit|\bcbn\b|banking|finance|\bbudget\b|efcc|icpc|fraud|corrupt|probe|anti-graft|abandoned project|funds|billion|recover/.test(text)) return {tag:'Business',color:'#e17055'};
+  // Business — Ghana-specific
+  if(/\bbusiness\b|\bmarket\b|\bstock\b|\btrade\b|\beconomy\b|\bgdp\b|inflation|\bcedi\b|\bgse\b|investment|revenue|profit|\bbog\b|banking|finance|\bbudget\b|fraud|corrupt|probe|funds|billion|recover/.test(text)) return {tag:'Business',color:'#e17055'};
   return {tag:'Ghana',color:'#006B3F'};
 }
 
@@ -2047,7 +2069,7 @@ function renderNews(articles){
   document.getElementById('news-loading').style.display='none';
   document.getElementById('news-list').innerHTML=articles.slice(0,6).map((item,i)=>{
     // Use source category if available (100% accurate) — only keyword-detect for general feeds
-    const {tag,color}=item.sourceCategory
+    const {tag,color}=(item.sourceCategory && item.sourceCategory !== null)
       ? {tag:item.sourceCategory, color:{Sports:'#006B3F',Business:'#e17055',Tech:'#0984e3',Security:'#d63031',Energy:'#f39c12',Health:'#00b894',Education:'#fdcb6e',Politics:'#6c5ce7'}[item.sourceCategory]||'#006B3F'}
       : detectNewsTag(item.title, item.description);
     const timeAgo=item.pubDate?getTimeAgo(new Date(item.pubDate)):'';
