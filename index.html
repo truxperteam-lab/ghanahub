@@ -625,11 +625,10 @@ footer strong{color:var(--green);}
 </div>
 
 <!-- SECURITY ALERT BANNER -->
-<div id="security-alert-bar">
-  🚨 <span id="security-alert-text">Security Alert Active</span> · 
-  <a href="https://techstatus.ghanahub.com.ng/#security" target="_blank" rel="noopener noreferrer">View Details on TechStatus →</a>
-  <button onclick="document.getElementById('security-alert-bar').style.display='none'" 
-    style="background:rgba(255,255,255,.2);border:none;color:white;padding:2px 8px;border-radius:100px;cursor:pointer;font-size:11px;margin-left:8px;">✕</button>
+<!-- security alert bar removed -->
+<div id="security-alert-bar" style="display:none!important">
+  <span id="security-alert-text"></span>
+  <button     style="background:rgba(255,255,255,.2);border:none;color:white;padding:2px 8px;border-radius:100px;cursor:pointer;font-size:11px;margin-left:8px;">✕</button>
 </div>
 
 <header>
@@ -3946,13 +3945,10 @@ function initTourismTab(){
 
 
 
-// ── CHECK SECURITY ALERTS ──────────────────
+// ── CHECK SECURITY ALERTS ── (disabled — no active alerts)
 (function checkSecurityAlerts(){
-  const activeAlerts = [
-    {title:'CBN warns of fake banking apps — verify before downloading', severity:'high'},
-    {title:'BOG: Fake investment platforms targeting Ghanaians', severity:'high'},
-    {title:'NCC Alert: SIM swap fraud on the rise', severity:'medium'},
-  ];
+  // Add real alerts here if needed
+  const activeAlerts = [];
   const high = activeAlerts.find(a=>a.severity==='high');
   if(high){
     document.getElementById('security-alert-text').textContent = '🚨 ' + high.title;
