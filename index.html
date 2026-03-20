@@ -2008,122 +2008,88 @@ async function loadNews(cat='general'){
   document.getElementById('news-loading').style.display='flex';
   document.getElementById('news-list').innerHTML='';
 
-  const feedMap={
-    general:[
-      {url:'https://citinewsroom.com/feed/',name:'Citi Newsroom'},
-      {url:'https://www.myjoyonline.com/feed/',name:'Joy Online'},
-      {url:'https://pulse.com.gh/feed',name:'Pulse Ghana'},
-      {url:'https://thebftonline.com/feed/',name:'BFT Online'},
-    ],
-    business:[
-      {url:'https://thebftonline.com/feed/',name:'BFT Online'},
-      {url:'https://citinewsroom.com/category/business/feed/',name:'Citi Business'},
-      {url:'https://www.myjoyonline.com/business/feed/',name:'Joy Business'},
-    ],
-    technology:[
-      {url:'https://techcabal.com/feed/',name:'TechCabal'},
-      {url:'https://techpoint.africa/feed/',name:'Techpoint Africa'},
-      {url:'https://citinewsroom.com/category/technology/feed/',name:'Citi Tech'},
-    ],
-    sports:[
-      {url:'https://footballghana.com/feed/',name:'Football Ghana'},
-      {url:'https://pulse.com.gh/sports/feed',name:'Pulse Sports'},
-      {url:'https://citinewsroom.com/category/sports/feed/',name:'Citi Sports'},
-    ]
+  // ── GNews API (free, 100 req/day — get key at gnews.io) ──────────────
+  const GNEWS_KEY = '08ee7979d22af42d1cb257b1f326d19f';
+  const topicMap = {
+    general:    'https://gnews.io/api/v4/search?q=ghana&lang=en&country=gh&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
+    business:   'https://gnews.io/api/v4/search?q=ghana+business+economy&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
+    technology: 'https://gnews.io/api/v4/search?q=ghana+technology+tech&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
+    sports:     'https://gnews.io/api/v4/search?q=ghana+sports+football+blackstars&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
   };
 
-  const feeds = feedMap[cat] || feedMap.general;
+  // ── Fallback: NewsData.io (free, 200 req/day — get key at newsdata.io) ─
+  const NEWSDATA_KEY = 'pub_f02799d135314cbe856176401ce6c626';
+  const ndCatMap = { general:'', business:'business', technology:'technology', sports:'sports' };
+  const ndCat = ndCatMap[cat] ? '&category='+ndCatMap[cat] : '';
+  const ndUrl = `https://newsdata.io/api/1/news?country=gh&language=en${ndCat}&apikey=${NEWSDATA_KEY}`;
 
-  // Try fetching a single RSS feed using multiple free CORS proxies
-  async function fetchRSS(feedUrl, sourceName) {
-    const proxies = [
-      `https://api.rss2json.com/v1/api.json?count=8&rss_url=${encodeURIComponent(feedUrl)}`,
-      `https://allorigins.win/get?disableCache=true&url=${encodeURIComponent(feedUrl)}`,
-      `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,
-    ];
+  let articles = [];
 
-    for (const proxyUrl of proxies) {
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 6000);
-        const r = await fetch(proxyUrl, {signal: ctrl.signal});
-        clearTimeout(tid);
-        if (!r.ok) continue;
-
-        // rss2json returns JSON directly
-        if (proxyUrl.includes('rss2json')) {
-          const d = await r.json();
-          if (d.status !== 'ok' || !d.items?.length) continue;
-          return d.items.map(item => ({
-            title: item.title?.trim() || '',
-            description: (item.description||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,180),
-            link: item.link || '',
-            source: d.feed?.title || sourceName,
-            pubDate: item.pubDate || '',
-            sourceCategory: null
-          })).filter(a => a.title);
-        }
-
-        // allorigins wraps content in JSON
-        let xmlText = '';
-        if (proxyUrl.includes('allorigins')) {
-          const d = await r.json();
-          xmlText = d.contents || '';
-        } else {
-          xmlText = await r.text();
-        }
-        if (!xmlText) continue;
-
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlText, 'text/xml');
-        const items = [...xml.querySelectorAll('item')].slice(0, 8);
-        if (!items.length) continue;
-
-        return items.map(item => {
-          const title = item.querySelector('title')?.textContent?.trim() || '';
-          const rawDesc = item.querySelector('encoded')?.textContent ||
-                          item.querySelector('description')?.textContent || '';
-          const desc = rawDesc.replace(/<!\[CDATA\[|\]\]>/g,'')
-            .replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,180);
-          const linkEl = item.querySelector('link');
-          const link = linkEl?.textContent?.trim() || linkEl?.nextSibling?.textContent?.trim() || '';
-          const pubDate = item.querySelector('pubDate')?.textContent || '';
-          return {title, description:desc, link, source:sourceName, pubDate, sourceCategory:null};
-        }).filter(a => a.title);
-
-      } catch(e) { continue; }
-    }
-    return []; // all proxies failed for this feed
+  // Try GNews first
+  if (GNEWS_KEY !== '') {
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(topicMap[cat]||topicMap.general, {signal:ctrl.signal});
+      const d = await r.json();
+      if (d.articles?.length) {
+        articles = d.articles.map(a => ({
+          title: a.title || '',
+          description: a.description || '',
+          link: a.url || '',
+          source: a.source?.name || 'GNews',
+          pubDate: a.publishedAt || '',
+          sourceCategory: null
+        })).filter(a => a.title);
+      }
+    } catch(e) {}
   }
 
-  // Fetch all feeds in parallel
-  const results = await Promise.all(feeds.map(f => fetchRSS(f.url, f.name)));
-  const allArticles = results.flat();
+  // Try NewsData.io as fallback
+  if (!articles.length && NEWSDATA_KEY !== '') {
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(ndUrl, {signal:ctrl.signal});
+      const d = await r.json();
+      if (d.results?.length) {
+        articles = d.results.map(a => ({
+          title: a.title || '',
+          description: a.description || a.content || '',
+          link: a.link || '',
+          source: a.source_id || 'NewsData',
+          pubDate: a.pubDate || '',
+          sourceCategory: null
+        })).filter(a => a.title);
+      }
+    } catch(e) {}
+  }
 
   document.getElementById('news-loading').style.display='none';
 
-  if (!allArticles.length) {
-    document.getElementById('news-list').innerHTML=`
+  if (!articles.length) {
+    // No API keys set — show setup instructions
+    const needsSetup = false;
+    document.getElementById('news-list').innerHTML = needsSetup ? `
+      <div style="padding:20px;background:rgba(206,17,38,.04);border:1px solid rgba(206,17,38,.15);border-radius:12px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:8px;">⚙️ News API key required</div>
+        <p style="font-size:13px;color:var(--mid);margin-bottom:12px;line-height:1.6;">
+          To show live Ghana news, add a free API key to your site:<br><br>
+          <strong>Option 1:</strong> <a href="https://gnews.io" target="_blank" style="color:var(--red)">gnews.io</a> — free, 100 requests/day, instant signup<br>
+          <strong>Option 2:</strong> <a href="https://newsdata.io" target="_blank" style="color:var(--red)">newsdata.io</a> — free, 200 requests/day, instant signup<br><br>
+          Then open your <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">index.html</code> and replace <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">YOUR_GNEWS_API_KEY</code> with your key.
+        </p>
+      </div>` : `
       <div style="padding:16px;text-align:center">
         <div style="font-size:32px;margin-bottom:8px">📡</div>
-        <div style="font-weight:600;margin-bottom:4px">Could not load news feeds</div>
+        <div style="font-weight:600;margin-bottom:4px">Could not load news</div>
         <div style="font-size:13px;color:var(--mid);margin-bottom:12px">Check your internet connection and try again</div>
         <button onclick="newsLoaded=false;loadNews('${cat}')" style="background:var(--red);color:white;border:none;border-radius:100px;padding:8px 20px;font-size:13px;cursor:pointer;">🔄 Try Again</button>
       </div>`;
     return;
   }
 
-  // Sort newest first, deduplicate by title
-  allArticles.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const seen = new Set();
-  const unique = allArticles.filter(a => {
-    const key = a.title.slice(0,50).toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  renderNews(unique.slice(0,8));
+  renderNews(articles.slice(0,8));
 }
 
 function detectNewsTag(title, desc){
