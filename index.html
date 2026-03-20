@@ -2008,20 +2008,42 @@ async function loadNews(cat='general'){
   document.getElementById('news-loading').style.display='flex';
   document.getElementById('news-list').innerHTML='';
 
-  // ── GNews API (free, 100 req/day — get key at gnews.io) ──────────────
+  // ── GNews API (free, 100 req/day) ──────────────────────────────────────
   const GNEWS_KEY = '08ee7979d22af42d1cb257b1f326d19f';
   const topicMap = {
-    general:    'https://gnews.io/api/v4/search?q=ghana&lang=en&country=gh&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
-    business:   'https://gnews.io/api/v4/search?q=ghana+business+economy&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
-    technology: 'https://gnews.io/api/v4/search?q=ghana+technology+tech&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
-    sports:     'https://gnews.io/api/v4/search?q=ghana+sports+football+blackstars&lang=en&max=8&sortby=publishedAt&apikey='+GNEWS_KEY,
+    general:    'https://gnews.io/api/v4/search?q=%22ghana%22&lang=en&country=gh&max=10&sortby=publishedAt&apikey='+GNEWS_KEY,
+    business:   'https://gnews.io/api/v4/search?q=%22ghana%22+%28economy+OR+business+OR+cedi+OR+BOG+OR+finance%29&lang=en&max=10&sortby=publishedAt&apikey='+GNEWS_KEY,
+    technology: 'https://gnews.io/api/v4/search?q=%22ghana%22+%28technology+OR+tech+OR+startup+OR+fintech+OR+digital%29&lang=en&max=10&sortby=publishedAt&apikey='+GNEWS_KEY,
+    sports:     'https://gnews.io/api/v4/search?q=%22ghana%22+%28football+OR+%22Black+Stars%22+OR+GPL+OR+sports+OR+athletics%29&lang=en&max=10&sortby=publishedAt&apikey='+GNEWS_KEY,
   };
 
-  // ── Fallback: NewsData.io (free, 200 req/day — get key at newsdata.io) ─
+  // ── Fallback: NewsData.io (free, 200 req/day) ───────────────────────────
   const NEWSDATA_KEY = 'pub_f02799d135314cbe856176401ce6c626';
   const ndCatMap = { general:'', business:'business', technology:'technology', sports:'sports' };
   const ndCat = ndCatMap[cat] ? '&category='+ndCatMap[cat] : '';
-  const ndUrl = `https://newsdata.io/api/1/news?country=gh&language=en${ndCat}&apikey=${NEWSDATA_KEY}`;
+  const ndUrl = `https://newsdata.io/api/1/news?country=gh&language=en&q=ghana${ndCat}&apikey=${NEWSDATA_KEY}`;
+
+  // Strip site name from article title e.g. "Story title – GhanaWeb" or "Title | Joy Online"
+  function cleanTitle(t) {
+    return (t||'').replace(/\s*[\u2013\u2014\-|]\s*(Ghana\s+\S[^|\-]{0,40}|Citi\s+News[^|\-]{0,30}|Joy\s+Online[^|\-]{0,20}|Pulse\s+Ghana[^|\-]{0,20}|GhanaWeb[^|\-]{0,20}|ghanamma[^|\-]{0,20}|ghananewss[^|\-]{0,20}|ghanasoccernet[^|\-]{0,20}|BFT[^|\-]{0,20})$/i,'').trim();
+  }
+
+  // Relevance filter — article must genuinely relate to Ghana AND the category
+  const catFilters = {
+    general:    /\bghana\b/i,
+    business:   /\bghana\b/i && /(econom|business|cedi|\bBOG\b|financ|invest|bank|budget|trade|market|revenue|GDP|inflation)/i,
+    technology: /\bghana\b/i && /(tech|digital|startup|fintech|\bapp\b|software|\bAI\b|internet|mobile|innovat)/i,
+    sports:     /\bghana\b/i && /(football|soccer|sport|Black Stars|\bGPL\b|athletic|boxing|match|score|goal|player|coach|tournament)/i,
+  };
+
+  function isRelevant(a, category) {
+    const text = ((a.title||'') + ' ' + (a.description||'')).toLowerCase();
+    if (!text.includes('ghana')) return false;
+    if (category === 'business') return /(econom|business|cedi|\bbog\b|financ|invest|bank|budget|trade|market|revenue|gdp|inflation)/.test(text);
+    if (category === 'technology') return /(tech|digital|startup|fintech|\bapp\b|software|\bai\b|internet|mobile|innovat)/.test(text);
+    if (category === 'sports') return /(football|soccer|sport|black stars|\bgpl\b|athletic|boxing|match|score|goal|player|coach|tournament)/.test(text);
+    return true;
+  }
 
   let articles = [];
 
@@ -2033,14 +2055,16 @@ async function loadNews(cat='general'){
       const r = await fetch(topicMap[cat]||topicMap.general, {signal:ctrl.signal});
       const d = await r.json();
       if (d.articles?.length) {
-        articles = d.articles.map(a => ({
-          title: a.title || '',
-          description: a.description || '',
-          link: a.url || '',
-          source: a.source?.name || 'GNews',
-          pubDate: a.publishedAt || '',
-          sourceCategory: null
-        })).filter(a => a.title);
+        articles = d.articles
+          .filter(a => isRelevant(a, cat))
+          .map(a => ({
+            title: cleanTitle(a.title),
+            description: a.description || '',
+            link: a.url || '',
+            source: a.source?.name || 'GNews',
+            pubDate: a.publishedAt || '',
+            sourceCategory: null
+          })).filter(a => a.title);
       }
     } catch(e) {}
   }
@@ -2053,17 +2077,28 @@ async function loadNews(cat='general'){
       const r = await fetch(ndUrl, {signal:ctrl.signal});
       const d = await r.json();
       if (d.results?.length) {
-        articles = d.results.map(a => ({
-          title: a.title || '',
-          description: a.description || a.content || '',
-          link: a.link || '',
-          source: a.source_id || 'NewsData',
-          pubDate: a.pubDate || '',
-          sourceCategory: null
-        })).filter(a => a.title);
+        articles = d.results
+          .filter(a => isRelevant(a, cat))
+          .map(a => ({
+            title: cleanTitle(a.title),
+            description: a.description || a.content || '',
+            link: a.link || '',
+            source: a.source_id || 'NewsData',
+            pubDate: a.pubDate || '',
+            sourceCategory: null
+          })).filter(a => a.title);
       }
     } catch(e) {}
   }
+
+  // Deduplicate by title
+  const seen = new Set();
+  articles = articles.filter(a => {
+    const key = a.title.slice(0,60).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   document.getElementById('news-loading').style.display='none';
 
