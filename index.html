@@ -55,7 +55,7 @@
   "alternateName": "Ghana Daily Dashboard",
   "url": "https://www.ghanahub.com.ng/",
   "description": "Ghana #1 daily dashboard for exchange rates, fuel prices, news, weather, football scores, remote jobs and more.",
-  "inLanguage": "en-NG",
+  "inLanguage": "en-GH",
   "potentialAction": {
     "@type": "SearchAction",
     "target": "https://www.ghanahub.com.ng/?q={search_term_string}",
@@ -763,7 +763,7 @@ footer strong{color:var(--green);}
       </div>
       <div style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div style="font-size:11px;">📅 <span id="fuel-date-stamp">—</span></div>
-        <div style="font-size:11px;">🕐 <span id="fuel-time-stamp">—</span> (WAT)</div>
+        <div style="font-size:11px;">🕐 <span id="fuel-time-stamp">—</span> (GMT)</div>
         <a href="https://www.npa.gov.gh" target="_blank" rel="noopener noreferrer" style="color:var(--green);font-size:11px;font-weight:600;">Verify with NPA →</a>
       </div>
     </div>
@@ -1810,10 +1810,32 @@ footer strong{color:var(--green);}
 
 <script>
 // ══════════════════════════════════════════
+// CONFIGURATION — ADD YOUR API KEY HERE
+// ══════════════════════════════════════════
+const ANTHROPIC_API_KEY = 'YOUR_ANTHROPIC_API_KEY_HERE'; // ← paste your key from console.anthropic.com
+
+// Helper: make an authenticated Anthropic API call
+async function callClaude(body) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+}
+
+// ══════════════════════════════════════════
 // DATE & GREETING
 // ══════════════════════════════════════════
 const now = new Date();
-document.getElementById('today-date').textContent = now.toLocaleDateString('en-NG',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+document.getElementById('today-date').textContent = now.toLocaleDateString('en-GH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 const hr = now.getHours();
 const _greetEng = hr<12?'🌅 Good morning, Ghana':hr<17?'☀️ Good afternoon, Ghana':'🌙 Good evening, Ghana';
 const _greetPid = hr<12?'🌅 How una dey, Ghana':hr<17?'☀️ Afternoon o, Ghana':'🌙 E don do, Ghana';
@@ -1853,8 +1875,7 @@ function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeou
 let selectedCurr='USD';
 
 async function loadRates(){
-  // PRIMARY: Try CBN official rate via ExchangeRate-API (pegged to CBN)
-  // SECONDARY: Fallback to ExchangeRate-API aggregator
+  // PRIMARY: ExchangeRate-API (GHS base)
   const urls=[
     'https://open.er-api.com/v6/latest/GHS',
     'https://api.exchangerate-api.com/v4/latest/GHS',
@@ -1869,17 +1890,19 @@ async function loadRates(){
         const d=await r.json();
         const fx=d.rates||d.conversion_rates;
         if(fx && fx.USD){
-          rates.USD=Math.round(1/fx.USD);
-          rates.GBP=Math.round(1/fx.GBP);
-          rates.EUR=Math.round(1/fx.EUR);
-          rates.AED=Math.round(1/fx.AED);
-          rates.CAD=Math.round(1/fx.CAD);
-          rates.CNY=Math.round(1/fx.CNY);
-          rates.SAR=Math.round(1/fx.SAR);
-          rates.ZAR=Math.round(1/fx.ZAR);
-          rates.XOF=fx.XOF?Math.round(1/fx.XOF):(rates.EUR>1?Math.round(rates.EUR/655.957):0);
-          rates._source='BOG Official Rate via ExchangeRate-API';
-          rates._updated=new Date().toLocaleString('en-NG');
+          // API returns GHS per 1 foreign unit e.g. USD: 0.063 means $1 = ₵15.8
+          // So GHS per 1 USD = 1/fx.USD
+          rates.USD=parseFloat((1/fx.USD).toFixed(2));
+          rates.GBP=parseFloat((1/fx.GBP).toFixed(2));
+          rates.EUR=parseFloat((1/fx.EUR).toFixed(2));
+          rates.AED=parseFloat((1/fx.AED).toFixed(2));
+          rates.CAD=parseFloat((1/fx.CAD).toFixed(2));
+          rates.CNY=parseFloat((1/fx.CNY).toFixed(2));
+          rates.SAR=parseFloat((1/fx.SAR).toFixed(2));
+          rates.ZAR=parseFloat((1/fx.ZAR).toFixed(2));
+          rates.XOF=fx.XOF?parseFloat((1/fx.XOF).toFixed(4)):null;
+          rates._source='Bank of Ghana (BOG) Official Rate';
+          rates._updated=new Date().toLocaleString('en-GH');
           updateRateUI();
           return;
         }
@@ -1887,12 +1910,12 @@ async function loadRates(){
     }
     if(attempt<2) await new Promise(r=>setTimeout(r,1500));
   }
-  // Final fallback — clearly labelled as indicative
-  rates={USD:1580,GBP:2020,EUR:1720,AED:430,CAD:1170,CNY:218,SAR:421,ZAR:86};
-  rates._source='Indicative only — CBN data unavailable';
-  rates._updated=new Date().toLocaleString('en-NG');
+  // Final fallback — Ghana Cedi rates (approximate)
+  rates={USD:15.8,GBP:20.2,EUR:17.2,AED:4.3,CAD:11.7,CNY:2.18,SAR:4.21,ZAR:0.86};
+  rates._source='Indicative only — live data unavailable';
+  rates._updated=new Date().toLocaleString('en-GH');
   updateRateUI();
-  document.getElementById('rate-source-line').textContent='⚠️ Indicative rates only · CBN live data unavailable';
+  document.getElementById('rate-source-line').textContent='⚠️ Indicative rates only · Live data unavailable';
 }
 
 function fmt(n){return '₵'+Math.round(n).toLocaleString();}
@@ -1909,7 +1932,7 @@ function updateRateUI(){
   document.getElementById('d-gbp').textContent=fmt(rates.GBP);
   // Hero
   document.getElementById('hero-usd').textContent=fmt(rates.USD)+' / $1';
-  document.getElementById('rate-updated').textContent='Official BOG rate · Updated '+new Date().toLocaleDateString('en-NG',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' · '+new Date().toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})+' WAT';
+  document.getElementById('rate-updated').textContent='Official BOG rate · Updated '+new Date().toLocaleDateString('en-GH',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' · '+new Date().toLocaleTimeString('en-GH',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Accra'})+' GMT';
   // Rate grid
   const currencies=[
     {c:'GBP',flag:'🇬🇧',name:'British Pound'},
@@ -1985,55 +2008,76 @@ async function loadNews(cat='general'){
   document.getElementById('news-loading').style.display='flex';
   document.getElementById('news-list').innerHTML='';
 
-  const catLabel = {general:'general Ghana', business:'Ghana business & economy', technology:'Ghana technology & startups', sports:'Ghana sports & Black Stars football'}[cat]||'Ghana';
-  const prompt = `Search the web for the 6 most recent ${catLabel} news headlines from the past 48 hours. Return ONLY a valid JSON array, no markdown, no backticks, no explanation before or after. Format: [{"title":"headline here","description":"one sentence summary","source":"Source Name","pubDate":"2026-03-13","link":"https://..."}]`;
+  // Free RSS feeds per category — no API key needed
+  const feedMap={
+    general:[
+      'https://www.graphic.com.gh/feed',
+      'https://citinewsroom.com/feed/',
+      'https://www.myjoyonline.com/feed/',
+      'https://pulse.com.gh/feed',
+      'https://thebftonline.com/feed/',
+    ],
+    business:[
+      'https://thebftonline.com/feed/',
+      'https://citinewsroom.com/category/business/feed/',
+      'https://www.myjoyonline.com/business/feed/',
+      'https://pulse.com.gh/business/feed',
+    ],
+    technology:[
+      'https://techcabal.com/feed/',
+      'https://techpoint.africa/feed/',
+      'https://citinewsroom.com/category/technology/feed/',
+    ],
+    sports:[
+      'https://footballghana.com/feed/',
+      'https://pulse.com.gh/sports/feed',
+      'https://citinewsroom.com/category/sports/feed/',
+      'https://www.ghanasoccernet.com/feed',
+    ]
+  };
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        tools: [{type: 'web_search_20250305', name: 'web_search'}],
-        system: 'You are a Ghana news aggregator. Search the web for real, current news stories. Respond with ONLY a raw JSON array — no markdown fences, no text before or after, just the JSON array starting with [ and ending with ].',
-        messages: [{role: 'user', content: prompt}]
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+  const feeds = feedMap[cat] || feedMap.general;
+  const allArticles = [];
 
-    // Extract all text blocks and join
-    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  // Fetch all feeds in parallel via rss2json (free, no key, CORS-friendly)
+  await Promise.all(feeds.map(async feedUrl => {
+    try {
+      const apiUrl = 'https://api.rss2json.com/v1/api.json?count=8&rss_url=' + encodeURIComponent(feedUrl);
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(apiUrl, {signal: ctrl.signal});
+      const d = await r.json();
+      if (d.status !== 'ok' || !d.items?.length) return;
+      const sourceName = d.feed?.title || feedUrl.replace(/https?:\/\/(www\.)?/,'').split('/')[0];
+      d.items.forEach(item => {
+        const title = item.title?.trim() || '';
+        const desc = (item.description || item.content || '')
+          .replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,160);
+        const link = item.link || item.url || '';
+        const pubDate = item.pubDate || '';
+        if (title) allArticles.push({title, description:desc, link, source:sourceName, pubDate, sourceCategory:null});
+      });
+    } catch(e) {}
+  }));
 
-    // Strip any accidental markdown fences
-    const clean = text.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+  document.getElementById('news-loading').style.display='none';
 
-    // Find the JSON array within the response (even if there's surrounding text)
-    const arrayStart = clean.indexOf('[');
-    const arrayEnd = clean.lastIndexOf(']');
-    if(arrayStart === -1 || arrayEnd === -1) throw new Error('No JSON array found in response');
-    const jsonStr = clean.slice(arrayStart, arrayEnd + 1);
-
-    const articles = JSON.parse(jsonStr);
-    if (!Array.isArray(articles) || !articles.length) throw new Error('Empty articles array');
-
-    // Normalise each article — ensure sourceCategory is set for renderNews
-    const normalised = articles.map(a => ({
-      title: a.title || '',
-      description: a.description || a.summary || '',
-      source: a.source || 'Ghana News',
-      pubDate: a.pubDate || a.date || '',
-      link: a.link || a.url || '',
-      sourceCategory: null  // let detectNewsTag handle it
-    })).filter(a => a.title);
-
-    document.getElementById('news-loading').style.display='none';
-    renderNews(normalised.slice(0,6));
-  } catch(e) {
-    document.getElementById('news-loading').style.display='none';
-    document.getElementById('news-list').innerHTML='<p style="padding:12px;color:var(--mid)">Could not load Ghana news. <button onclick="loadNews(\''+cat+'\')" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">Try again</button></p>';
+  if (!allArticles.length) {
+    document.getElementById('news-list').innerHTML=`<p style="padding:12px;color:var(--mid)">Could not load Ghana news. <button onclick="loadNews('${cat}')" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">Try again</button></p>`;
+    return;
   }
+
+  // Sort newest first, deduplicate
+  allArticles.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+  const seen = new Set();
+  const unique = allArticles.filter(a => {
+    const key = a.title.slice(0,50).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  renderNews(unique.slice(0,8));
 }
 
 function detectNewsTag(title, desc){
@@ -2132,7 +2176,7 @@ async function fetchWithFallback(url){
 
 async function loadBannerWeather(){
   try{
-    const d = await fetchWithFallback('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.40&current=temperature_2m,weathercode&timezone=Africa/Lagos');
+    const d = await fetchWithFallback('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.40&current=temperature_2m,weathercode&timezone=Africa/Accra');
     if(d && d.current){
       const temp = Math.round(d.current.temperature_2m);
       const desc = (WMO[d.current.weathercode]||'🌤️ Cloudy').split(' ').slice(1).join(' ');
@@ -2146,7 +2190,7 @@ async function loadWeather(){
   weatherLoaded=true;
   // Lagos for banner
   try{
-    const d=await fetchWithFallback('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.40&current=temperature_2m,weathercode&timezone=Africa/Lagos');
+    const d=await fetchWithFallback('https://api.open-meteo.com/v1/forecast?latitude=6.45&longitude=3.40&current=temperature_2m,weathercode&timezone=Africa/Accra');
     if(d && d.current){
       const temp=Math.round(d.current.temperature_2m);
       const desc=(WMO[d.current.weathercode]||'🌤️ Cloudy').split(' ').slice(1).join(' ');
@@ -2162,7 +2206,7 @@ async function loadWeather(){
   el.innerHTML='<div class="loading-row"><div class="spinner"></div> Loading city weather...</div>';
   const results=await Promise.all(cities.map(async city=>{
     try{
-      const d=await fetchWithFallback(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weathercode,windspeed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=Africa/Lagos&forecast_days=1`);
+      const d=await fetchWithFallback(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weathercode,windspeed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=Africa/Accra&forecast_days=1`);
       if(!d||!d.current) throw new Error('no data');
       const icon=(WMO[d.current.weathercode]||'🌤️').split(' ')[0];
       const desc=(WMO[d.current.weathercode]||'🌤️ Cloudy').split(' ').slice(1).join(' ');
@@ -2570,13 +2614,13 @@ async function loadLeague(leagueCode, leagueName){
 
     document.getElementById('football-content').innerHTML=displayMatches.map(m=>{
       const date=m.utcDate?.slice(0,10)||'';
-      const time=m.utcDate?new Date(m.utcDate).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'}):'';
+      const time=m.utcDate?new Date(m.utcDate).toLocaleTimeString('en-GH',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Accra'}):'';
       const isFixture=currentView==='fixtures';
       const homeScore=m.score?.fullTime?.home;
       const awayScore=m.score?.fullTime?.away;
 
       const scoreDisplay=isFixture
-        ? `<div style="font-size:13px;color:var(--mid);font-weight:700;">${time} WAT</div>`
+        ? `<div style="font-size:13px;color:var(--mid);font-weight:700;">${time} GMT</div>`
         : `<div class="score" style="font-size:24px;font-weight:800;color:var(--green);">${homeScore??'—'} – ${awayScore??'—'}</div>`;
 
       // Form for both teams
@@ -2647,7 +2691,7 @@ const banks=[
 const userReports={};
 
 function checkBankStatus(){
-  document.getElementById('status-time').textContent=new Date().toLocaleTimeString('en-NG');
+  document.getElementById('status-time').textContent=new Date().toLocaleTimeString('en-GH');
   const grid=document.getElementById('bank-status-grid');
   // We ping each bank's known status page via a lightweight check
   grid.innerHTML=banks.map(b=>{
@@ -2739,7 +2783,7 @@ async function loadJobs(){
           tags:    (j.categories||[]).slice(0,3),
           desc:    (j.excerpt||'').slice(0,140),
           url:     j.applicationLink||'https://himalayas.app/jobs',
-          date:    j.pubDate?new Date(j.pubDate).toLocaleDateString('en-NG',{day:'numeric',month:'short'}):'Recent',
+          date:    j.pubDate?new Date(j.pubDate).toLocaleDateString('en-GH',{day:'numeric',month:'short'}):'Recent',
           cat,
         });
       });
@@ -2778,7 +2822,7 @@ async function loadJobs(){
               salary:j.salary||'Competitive',tags:(j.tags||[]).slice(0,3),
               desc:(j.description||'').replace(/<[^>]*>/g,'').slice(0,140),
               url:j.url||'https://remotive.com',
-              date:j.publication_date?new Date(j.publication_date).toLocaleDateString('en-NG',{day:'numeric',month:'short'}):'Recent',
+              date:j.publication_date?new Date(j.publication_date).toLocaleDateString('en-GH',{day:'numeric',month:'short'}):'Recent',
               cat,
             });
           });
@@ -2914,8 +2958,8 @@ function saveFuelPrices(){
   const lpg=document.getElementById('input-lpg').value;
   const source=document.getElementById('input-source').value||'Updated manually';
   const now=new Date();
-  const date=now.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'});
-  const time=now.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'});
+  const date=now.toLocaleDateString('en-GH',{day:'numeric',month:'short',year:'numeric'});
+  const time=now.toLocaleTimeString('en-GH',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Accra'});
   const isoTs=now.toISOString();
   if(pms) document.getElementById('price-pms').textContent='₵'+Number(pms).toLocaleString();
   if(ago) document.getElementById('price-ago').textContent='₵'+Number(ago).toLocaleString();
@@ -3881,7 +3925,7 @@ function sendAlertEmail(service, status, reports, location, site){
     status: status,
     reports: reports,
     location: location || 'Not specified',
-    time: new Date().toLocaleString('en-NG'),
+    time: new Date().toLocaleString('en-GH'),
     site: site || 'ghanahub.com.ng',
   }).then(()=>{
     // email alert sent
@@ -4777,7 +4821,7 @@ function applyPrefs(prefs) {
     // Update banner weather for preferred city
     (async () => {
       try {
-        const d = await fetchWithFallback(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weathercode&timezone=Africa/Lagos`);
+        const d = await fetchWithFallback(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weathercode&timezone=Africa/Accra`);
         if(d && d.current) {
           let temp = Math.round(d.current.temperature_2m);
           if(prefs.tempUnit === 'F') temp = Math.round(temp * 9/5 + 32);
@@ -4969,7 +5013,7 @@ function initHolidays() {
     const diffMs = nextDate - today;
     const diffDays = Math.round(diffMs / 86400000);
     const label = diffDays === 0 ? 'TODAY! 🎉' : diffDays === 1 ? 'Tomorrow' : diffDays + ' days';
-    const dateStr = nextDate.toLocaleDateString('en-NG', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    const dateStr = nextDate.toLocaleDateString('en-GH', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
     // Hero banner stat
     const dDays = document.getElementById('d-holiday-days');
@@ -5018,7 +5062,7 @@ function initHolidays() {
       const isToday = h.date === todayStr;
       const isNext = next && h.date === next.date && h.name === next.name;
       const diffD = Math.round((hDate - today) / 86400000);
-      const dayLabel = hDate.toLocaleDateString('en-NG', {weekday:'short', day:'numeric', month:'short'});
+      const dayLabel = hDate.toLocaleDateString('en-GH', {weekday:'short', day:'numeric', month:'short'});
       const badge = isToday
         ? `<span style="background:#e74c3c;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">TODAY</span>`
         : isNext
